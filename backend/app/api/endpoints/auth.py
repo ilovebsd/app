@@ -1,8 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
-from jose import JWTError, jwt
-from app.core.config import settings
 from app.core.deps import get_current_user
 from app.core.security import verify_password, create_access_token
 from app.crud.account import get_account
