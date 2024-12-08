@@ -1,0 +1,265 @@
+# Python 관련
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 가상환경
+venv/
+env/
+ENV/
+.env
+.venv
+.env.*
+
+# IDE 설정
+.idea/
+.vscode/
+*.swp
+*.swo
+*.swn
+*.bak
+*.code-workspace
+.settings/
+
+# 로그 파일
+*.log
+logs/
+log/
+
+# 데이터베이스
+*.sqlite3
+*.db
+
+# 테스트 관련
+.coverage
+htmlcov/
+.tox/
+.nox/
+.pytest_cache/
+coverage.xml
+*.cover
+.hypothesis/
+
+# 임시 파일
+.DS_Store
+Thumbs.db
+*.tmp
+*.temp
+*~
+
+# 프로젝트 특정 파일
+node_modules/
+.next/
+.nuxt/
+dist/
+.cache/
+
+# 보안 관련
+*.pem
+*.key
+*.cert
+*.crt
+
+# Windows 시스템 파일
+desktop.ini
+$RECYCLE.BIN/
+System Volume Information/
+
+# Linux 시스템 파일
+.Trash-*
+.directory
+
+# macOS 시스템 파일
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# 프로젝트 특정 설정
+config.local.yaml
+settings.local.json
+
+# 빌드 결과물
+/build/
+/dist/
+/out/
+
+# 미디어 파일
+*.mp4
+*.mp3
+*.wav
+*.avi
+*.mov
+*.wmv
+
+# 압축 파일
+*.zip
+*.gz
+*.tar
+*.rar
+*.7z
+
+# 문서 파일 (필요한 경우 주석 처리)
+# *.pdf
+# *.doc
+# *.docx
+# *.xls
+# *.xlsx
+# *.ppt
+# *.pptx
+
+# 기타
+.history/
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local# Python 관련
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 가상환경
+venv/
+env/
+ENV/
+.env
+.venv
+.env.*
+
+# IDE 설정
+.idea/
+.vscode/
+*.swp
+*.swo
+*.swn
+*.bak
+*.code-workspace
+.settings/
+
+# 로그 파일
+*.log
+logs/
+log/
+
+# 데이터베이스
+*.sqlite3
+*.db
+
+# 테스트 관련
+.coverage
+htmlcov/
+.tox/
+.nox/
+.pytest_cache/
+coverage.xml
+*.cover
+.hypothesis/
+
+# 임시 파일
+.DS_Store
+Thumbs.db
+*.tmp
+*.temp
+*~
+
+# 프로젝트 특정 파일
+node_modules/
+.next/
+.nuxt/
+dist/
+.cache/
+
+# 보안 관련
+*.pem
+*.key
+*.cert
+*.crt
+
+# Windows 시스템 파일
+desktop.ini
+$RECYCLE.BIN/
+System Volume Information/
+
+# Linux 시스템 파일
+.Trash-*
+.directory
+
+# macOS 시스템 파일
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# 프로젝트 특정 설정
+config.local.yaml
+settings.local.json
+
+# 빌드 결과물
+/build/
+/dist/
+/out/
+
+# 미디어 파일
+*.mp4
+*.mp3
+*.wav
+*.avi
+*.mov
+*.wmv
+
+# 압축 파일
+*.zip
+*.gz
+*.tar
+*.rar
+*.7z
+
+# 문서 파일 (필요한 경우 주석 처리)
+# *.pdf
+# *.doc
+# *.docx
+# *.xls
+# *.xlsx
+# *.ppt
+# *.pptx
+
+# 기타
+.history/
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local

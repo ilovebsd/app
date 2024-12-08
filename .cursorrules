@@ -1,0 +1,421 @@
+# vPBX 운영 시스템 종합 개발 문서
+
+## 목차
+1. [프로젝트 개요](#1-프로젝트-개요)
+2. [기술 스택](#2-기술-스택)
+3. [프로젝트 구조](#3-프로젝트-구조)
+4. [데이터베이스 설계](#4-데이터베이스-설계)
+5. [API 설계](#5-api-설계)
+6. [프론트엔드 구현](#6-프론트엔드-구현)
+7. [보안 설정](#7-보안-설정)
+8. [테스트 전략](#8-테스트-전략)
+9. [배포 가이드](#9-배포-가이드)
+10. [문제 해결 가이드](#10-문제-해결-가이드)
+
+## 1. 프로젝트 개요
+
+### 1.1 목적
+- vPBX 시스템의 효율적인 운영 및 관리
+- 사용자 친화적인 인터페이스 제공
+- 안정적인 시스템 모니터링
+
+### 1.2 개발 원칙
+- 코드는 초등학생도 이해할 수 있게 주석 작성
+- 모듈식 구성으로 기능 확장 용이
+- 직관적이고 단순한 프로젝트 구조
+- Git을 활용한 버전 관리
+
+### 1.3 기본 요구사항
+- 사용자 인증 및 권한 관리
+- vPBX 시스템 상태 모니터링
+- 로그 관리 및 분석
+- 실시간 알림 기능
+
+## 2. 기술 스택
+
+### 2.1 백엔드
+- 언어: Python 3.9+
+- 프레임워크: FastAPI
+- 데이터베이스: PostgreSQL
+- ORM: SQLAlchemy
+- 비동기 드라이버: asyncpg
+- 인증: JWT
+
+### 2.2 프론트엔드
+- 프레임워크: Next.js 13+ (App Router)
+- 언어: TypeScript
+- UI 라이브러리: Mantine
+- 상태 관리: Recoil
+- API 통신: React Query
+- 애니메이션: GSAP
+
+## 3. 프로젝트 구조
+
+### 3.1 백엔드 구조
+```
+backend/
+├── app/
+│   ├── api/           # API 엔드포인트
+│   ├── core/          # 핵심 설정
+│   ├── crud/          # 데이터베이스 작업
+│   ├── db/            # 데이터베이스 설정
+│   ├── models/        # SQLAlchemy 모델
+│   └── schemas/       # Pydantic 스키마
+├── tests/             # 테스트 코드
+└── main.py           # 애플리케이션 진입점
+```
+
+### 3.2 프론트엔드 구조
+```
+frontend/
+├── src/
+│   ├── components/    # 재사용 컴포넌트
+│   ├── hooks/         # 커스텀 훅
+│   ├── pages/         # 페이지 컴포넌트
+│   ├── services/      # API 서비스
+│   ├── store/         # Recoil 상태 관리
+│   ├── styles/        # 스타일 설정
+│   └── utils/         # 유틸리티 함수
+└── tests/             # 테스트 코드
+```
+
+## 4. 데이터베이스 설계
+
+### 4.1 데이터베이스 연결 설정
+```python
+# db/session.py
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
+
+DATABASE_URL = "postgresql+asyncpg://ssw:ssw@220.73.223.245:39998/ems"
+
+engine = create_async_engine(DATABASE_URL, echo=True)
+AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+async def get_db():
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
+```
+
+### 4.2 모델 정의
+```python
+# models/account.py
+from sqlalchemy import Column, Integer, String
+from sqlalchemy.ext.declarative import declarative_base
+
+Base = declarative_base()
+
+class Account(Base):
+    __tablename__ = "table_statusaccount"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(32), unique=True, index=True)
+    password = Column(String(32))
+    userlevel = Column(Integer)  # 1: 사용자, 2: vPBX DB 네임
+    onlogin = Column(Integer)    # 0: 로그오프, 1: 로그인
+```
+
+### 4.3 CRUD 작업
+```python
+# crud/account.py
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from models.account import Account
+
+async def create_account(db: AsyncSession, username: str, password: str, userlevel: int):
+    account = Account(username=username, password=password, userlevel=userlevel, onlogin=0)
+    db.add(account)
+    await db.commit()
+    await db.refresh(account)
+    return account
+
+async def get_account(db: AsyncSession, username: str):
+    query = select(Account).where(Account.username == username)
+    result = await db.execute(query)
+    return result.scalar_one_or_none()
+```
+
+## 5. API 설계
+
+### 5.1 인증 API
+```python
+# api/endpoints/auth.py
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+from db.session import get_db
+from crud.account import get_account
+
+router = APIRouter()
+
+@router.post("/login")
+async def login(username: str, password: str, db: AsyncSession = Depends(get_db)):
+    account = await get_account(db, username)
+    if not account or account.password != password:
+        raise HTTPException(status_code=401, detail="인증 실패")
+    return {"access_token": create_access_token(username)}
+```
+
+### 5.2 API 응답 스키마
+```python
+# schemas/account.py
+from pydantic import BaseModel
+
+class AccountResponse(BaseModel):
+    username: str
+    userlevel: int
+    onlogin: int
+
+    class Config:
+        orm_mode = True
+```
+
+## 6. 프론트엔드 구현
+
+### 6.1 API 서비스
+```typescript
+// services/api.ts
+import axios from 'axios';
+
+const api = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  headers: { 'Content-Type': 'application/json' }
+});
+
+export const login = async (username: string, password: string) => {
+  const response = await api.post('/login', { username, password });
+  return response.data;
+};
+```
+
+### 6.2 로그인 컴포넌트
+```typescript
+// components/LoginForm.tsx
+import { useState } from 'react';
+import { TextField, Button } from '@mui/material';
+import styled from 'styled-components';
+
+const LoginForm = () => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const data = await login(username, password);
+      // 로그인 처리
+    } catch (error) {
+      // 에러 처리
+    }
+  };
+
+  return (
+    <Form onSubmit={handleSubmit}>
+      <TextField
+        label="아이디"
+        value={username}
+        onChange={(e) => setUsername(e.target.value)}
+      />
+      <TextField
+        type="password"
+        label="비밀번호"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+      />
+      <Button type="submit" variant="contained">로그인</Button>
+    </Form>
+  );
+};
+
+const Form = styled.form`
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+`;
+```
+
+## 7. 보안 설정
+
+### 7.1 JWT 설정
+```python
+# core/security.py
+from datetime import datetime, timedelta
+from jose import jwt
+
+SECRET_KEY = "your-secret-key"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+def create_access_token(username: str):
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    return jwt.encode(
+        {"sub": username, "exp": expire},
+        SECRET_KEY,
+        algorithm=ALGORITHM
+    )
+```
+
+### 7.2 인증 미들웨어
+```python
+# core/deps.py
+from fastapi import Depends, HTTPException
+from jose import JWTError, jwt
+from db.session import get_db
+
+async def get_current_user(token: str, db: AsyncSession = Depends(get_db)):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if username is None:
+            raise HTTPException(status_code=401)
+        return await get_account(db, username)
+    except JWTError:
+        raise HTTPException(status_code=401)
+```
+
+## 8. 테스트 전략
+
+### 8.1 백엔드 테스트
+```python
+# tests/test_auth.py
+import pytest
+from httpx import AsyncClient
+from main import app
+
+@pytest.mark.asyncio
+async def test_login():
+    async with AsyncClient(app=app, base_url="http://test") as ac:
+        response = await ac.post("/login", 
+            json={"username": "test", "password": "test"})
+        assert response.status_code == 200
+        assert "access_token" in response.json()
+```
+
+### 8.2 프론트엔드 테스트
+```typescript
+// tests/LoginForm.test.tsx
+import { render, fireEvent, waitFor } from '@testing-library/react';
+import LoginForm from '../components/LoginForm';
+
+test('로그인 폼 제출', async () => {
+  const { getByLabelText, getByText } = render(<LoginForm />);
+  
+  fireEvent.change(getByLabelText('아이디'), { 
+    target: { value: 'test' } 
+  });
+  fireEvent.change(getByLabelText('비밀번호'), { 
+    target: { value: 'test' } 
+  });
+  fireEvent.click(getByText('로그인'));
+  
+  await waitFor(() => {
+    expect(getByText('로그인 성공')).toBeInTheDocument();
+  });
+});
+```
+
+## 9. 배포 가이드
+
+### 9.1 환경 변수 설정
+```env
+# .env
+DATABASE_URL=postgresql+asyncpg://ssw:ssw@220.73.223.245:39998/ems
+SECRET_KEY=your-secret-key
+```
+
+### 9.2 로컬 개발 환경 설정
+```bash
+# 백엔드 실행
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+uvicorn main:app --reload
+
+# 프론트엔드 실행
+npm install
+npm run dev
+```
+
+## 10. 문제 해결 가이드
+
+### 10.1 자주 발생하는 문제
+1. 데이터베이스 연결 오류
+   - 해결: 환경 변수 확인
+   - 네트워크 연결 확인
+
+2. 토큰 만료
+   - 해결: 로그아웃 후 재로그인
+   - 토큰 갱신 로직 확인
+
+3. API 타임아웃
+   - 해결: 타임아웃 설정 조정
+   - 네트워크 상태 확인
+
+### 10.2 디버깅 가이드
+```python
+# 로깅 설정
+import logging
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
+logger = logging.getLogger(__name__)
+```
+
+### 10.3 성능 모니터링
+```python
+# 성능 측정 데코레이터
+from functools import wraps
+import time
+
+def measure_time(func):
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        start = time.time()
+        result = await func(*args, **kwargs)
+        end = time.time()
+        logger.debug(f"{func.__name__} took {end - start:.2f} seconds")
+        return result
+    return wrapper
+```
+
+## 11. 기술 참고 사항
+
+### 11.1 코드 컨벤션
+- Python: PEP 8 준수
+- TypeScript: ESLint + Prettier 설정
+- 커밋 메시지: Conventional Commits 형식
+
+### 11.2 성능 최적화
+- 이미지 최적화: Next.js Image 컴포넌트 사용
+- API 캐싱: React Query 활용
+- 코드 스플리팅: Dynamic Import 사용
+
+### 11.3 보안 체크리스트
+- [ ] 환경 변수 보안 확인
+- [ ] SQL 인젝션 방지 (ORM 사용)
+- [ ] XSS 방지
+- [ ] CSRF 토큰 구현
+- [ ] Rate Limiting 설정
+
+## 12. 유지보수 가이드
+
+### 12.1 정기 점검 항목
+- 데이터베이스 백업
+- 로그 파일 정리
+- 보안 업데이트 확인
+- 성능 모니터링 리포트 검토
+
+### 12.2 업데이트 프로세스
+1. 개발 환경에서 테스트
+2. 스테이징 환경 배포
+3. 테스트 수행
+4. 운영
