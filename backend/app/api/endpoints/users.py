@@ -1,107 +1,72 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Body
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Any
-from pydantic import BaseModel
-from app.db.session import get_db
 from app.core.deps import get_current_user
-from app.core.security import verify_password
-from app.crud.account import get_account, create_account, update_account, delete_account
-from app.models.account import Account
+from app.crud.user_crud import update_password
+from app.db.db_config import get_db
+from app.models.user_model import Account
+from app.schemas.user_schema import UserUpdate, UserResponse
+import re
 import logging
 
-# 로깅 설정
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
-
 users_router = APIRouter()
 
-class UserCreate(BaseModel):
-    username: str
-    password: str
-    userlevel: int
+def validate_password(password: str) -> tuple[bool, str]:
+    """비밀번호 유효성 검사"""
+    if len(password) < 8:
+        return False, "비밀번호는 최소 8자 이상이어야 합니다"
+    if len(password) > 20:
+        return False, "비밀번호는 20자를 초과할 수 없습니다"
+    if ' ' in password:
+        return False, "비밀번호에 공백을 포함할 수 없습니다"
+    if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+        return False, "비밀번호는 최소 1개의 특수문자를 포함해야 합니다"
+    return True, ""
 
-class UserDelete(BaseModel):
-    username: str
-
-class PasswordUpdate(BaseModel):
-    old_password: str
-    new_password: str
-
-@users_router.post("/add")
-async def add_user(
-    user_in: UserCreate,
-    token: str = Depends(oauth2_scheme),
-    current_user: Account = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-) -> Any:
-    """새로운 사용자 추���"""
-    logger.debug(f"User creation attempt by {current_user.username}")
-    
-    if await get_account(db, username=user_in.username):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="이미 존재하는 사용자명입니다."
-        )
-    
-    user = await create_account(db, user_in)
+@users_router.get("/info", response_model=UserResponse)
+async def get_user_info(current_user: Account = Depends(get_current_user)):
+    """현재 로그인한 사용자 정보 조회"""
     return {
-        "status": "success",
-        "message": f"사용자 '{user.username}'가 생성되었습니다.",
-        "username": user.username,
-        "userlevel": user.userlevel
-    }
-
-@users_router.delete("/delete")
-async def delete_user(
-    request: UserDelete,
-    token: str = Depends(oauth2_scheme),
-    current_user: Account = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-) -> Any:
-    """사용자 삭제"""
-    user_to_delete = await get_account(db, request.username)
-    if not user_to_delete:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"사용자 '{request.username}'를 찾을 수 없습니다."
-        )
-    
-    if user_to_delete.username == current_user.username:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="자기 자신의 계정은 삭제할 수 없습니다."
-        )
-    
-    await delete_account(db, user_to_delete)
-    return {
-        "status": "success",
-        "message": f"사용자 '{request.username}'가 삭제되었습니다."
+        "username": current_user.username,
+        "userlevel": current_user.userlevel,
+        "onlogin": current_user.onlogin
     }
 
 @users_router.put("/update")
-async def update_password(
-    password: str = Body(...),
-    db: AsyncSession = Depends(get_db),
-    current_user: Account = Depends(get_current_user)
+async def update_user(
+    user_update: UserUpdate,
+    current_user: Account = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
 ):
-    """비밀번호 변경"""
-    if not verify_password(password, current_user.password):
+    """사용자 비밀번호 업데이트"""
+    try:
+        # 비밀번호 유효성 검사
+        is_valid, error_message = validate_password(user_update.password)
+        if not is_valid:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=error_message
+            )
+            
+        result = await update_password(db, current_user.username, user_update.password)
+        if result:
+            logger.info(f"Password updated successfully for user: {current_user.username}")
+            return {
+                "status": "success",
+                "message": "비밀번호가 성공적으로 변경되었습니다."
+            }
+            
+        logger.warning(f"Password update failed - user not found: {current_user.username}")
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="현재 비밀번호가 일치하지 않습니다."
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="사용자를 찾을 수 없습니다."
         )
-    
-    if len(password) < 8:
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Password update error: {str(e)}")
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="비밀번호는 최소 8자 이상이어야 합니다."
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
         )
-    
-    await update_account(db, current_user, {"password": password})
-    return {
-        "status": "success",
-        "message": "비밀번호가 변경되었습니다."
-    }

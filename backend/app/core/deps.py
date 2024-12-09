@@ -1,38 +1,32 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.config import settings
-from app.crud.account import get_account
-from app.db.session import get_db
-import logging
+from .session import session_manager
+from .security import decode_token
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
-logger = logging.getLogger(__name__)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-async def get_current_user(
-    db: AsyncSession = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
-):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    """현재 인증된 사용자 확인"""
     try:
-        payload = jwt.decode(
-            token, 
-            settings.SECRET_KEY, 
-            algorithms=[settings.ALGORITHM]
-        )
-        username: str = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-    except JWTError as e:
-        logger.error(f"Token validation error: {e}")
-        raise credentials_exception
+        payload = decode_token(token)
+        username = payload.get("sub")
+        if not username:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials"
+            )
+            
+        # 세션 유효성 검증
+        if not session_manager.validate_session(username, token):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Session expired or invalid"
+            )
+            
+        return username
         
-    user = await get_account(db, username)
-    if user is None:
-        raise credentials_exception
-    return user 
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials"
+        )

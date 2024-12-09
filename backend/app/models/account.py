@@ -6,7 +6,10 @@ Base = declarative_base()
 class Account(Base):
     __tablename__ = "table_statusaccount"
     
-    username = Column(String(32), primary_key=True, index=True)
-    password = Column(String(128))
-    userlevel = Column(Integer)  # 1: 사용자, 2: vPBX DB 네임
-    onlogin = Column(Integer)    # 0: 로그오프, 1: 로그인
+    username = Column(String(32), primary_key=True)
+    password = Column(String(60))
+    userlevel = Column(Integer)
+    onlogin = Column(Integer)
+
+    def __repr__(self):
+        return f"Account(username={self.username}, userlevel={self.userlevel}, onlogin={self.onlogin})" 

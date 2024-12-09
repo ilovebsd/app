@@ -1,0 +1,28 @@
+=== vPBX 프로젝트 Git 상태 리포트 ===
+생성 일시: 2024-12-09 02:30:07
+분석 기간: 최근 7 일
+제외 경로: 없음
+
+1. 현재 브랜치:
+* master 0ea3c3f refactor: 코드 정리 및 최적화
+
+2. 최근 커밋:
+0ea3c3f refactor: 코드 정리 및 최적화
+1d2fc92 백엔드 로그인, 로그아웃, 사용자 추가, 삭제, 업데이트
+
+3. 변경된 파일:
+ M backend/app/api/endpoints/auth.py
+ M backend/app/api/endpoints/users.py
+ M backend/app/core/security.py
+ M backend/app/crud/account.py
+ D backend/main.py
+?? backend/app/api/endpoints/health.py
+?? backend/app/main.py
+?? backend/app/schemas/user.py
+
+4. 파일별 변경 횟수 (상위 5개):
+      2 backend/app/schemas/account.py
+      2 backend/app/core/middleware.py
+      2 backend/app/api/endpoints/auth.py
+      1 dev_history.sh
+      1 backend/main.py
