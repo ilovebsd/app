@@ -4,11 +4,12 @@ import bcrypt
 import logging
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
+from app.core.config import settings
 
 # JWT 설정
-SECRET_KEY = "your-secret-key"  # 실제 운영환경에서는 환경변수로 관리
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+SECRET_KEY = settings.JWT_SECRET_KEY
+ALGORITHM = settings.JWT_ALGORITHM
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES
 
 logger = logging.getLogger(__name__)
 

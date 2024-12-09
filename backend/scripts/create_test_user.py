@@ -2,6 +2,7 @@
 import bcrypt
 import psycopg2
 import logging
+from app.core.config import settings
 
 # 로깅 설정
 logging.basicConfig(level=logging.DEBUG)
@@ -9,11 +10,11 @@ logger = logging.getLogger(__name__)
 
 # DB 연결 정보
 DB_PARAMS = {
-    "dbname": "ems",
-    "user": "ssw",
-    "password": "ssw",
-    "host": "220.73.223.245",
-    "port": "39998"
+    "dbname": settings.DB_NAME,
+    "user": settings.DB_USER,
+    "password": settings.DB_PASSWORD,
+    "host": settings.DB_HOST,
+    "port": settings.DB_PORT
 }
 
 def create_test_user(username="admin", password="admin"):
